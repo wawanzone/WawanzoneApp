@@ -125,7 +125,7 @@ export default function TabOneScreen({ onExpanseAdded }: TabOneScreenProps) {
               setPickerVisible(false); // Close picker after selection
             }}
           >
-            <Picker.Item label="Pilih kategori pengeluaran" value={null} />
+            <Picker.Item label="Others" value={null} />
             <Picker.Item label="Food & Beverages" value="food_beverages" />
             <Picker.Item label="Transportation" value="transportation" />
             <Picker.Item label="Housing & Utilities" value="housing_utilities" />

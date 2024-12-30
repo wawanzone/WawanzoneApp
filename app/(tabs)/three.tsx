@@ -19,7 +19,7 @@ export default function FinancesScreen() {
     fetchTransactions();
 
     // Set interval to update transactions every 5 seconds
-    const intervalId = setInterval(fetchTransactions, 5000);
+    const intervalId = setInterval(fetchTransactions, 3000);
 
     // Clean up interval on component unmount
     return () => clearInterval(intervalId);
@@ -55,14 +55,34 @@ export default function FinancesScreen() {
     return total;
   };
 
+  // Format the date as "Today", "1 day ago", "2 days ago", etc.
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInTime = now.getTime() - date.getTime();
+    const diffInDays = Math.floor(diffInTime / (1000 * 3600 * 24));
+
+    if (diffInDays === 0) {
+      return 'Today';
+    } else if (diffInDays === 1) {
+      return '1 day ago';
+    } else if (diffInDays <= 7) {
+      return `${diffInDays} days ago`;
+    } else {
+      return date.toLocaleDateString('id-ID'); // Fallback to full date format
+    }
+  };
+
   // Render each transaction item with IDR format
   const renderItem = ({ item }: { item: Transaction }) => (
     <View style={styles.transactionItem}>
       <Text style={[styles.transactionText, item.type === 'income' ? styles.incomeText : styles.expenseText]}>
         {parseFloat(item.amount).toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
       </Text>
-      <Text style={styles.transactionText}>{item.category}</Text>
-      <Text style={styles.transactionText}>{item.date}</Text>
+      <View style={styles.transactionRow}>
+        <Text style={styles.transactionText}>{item.category}</Text>
+        <Text style={styles.transactionText}>{formatDate(item.date)}</Text>
+      </View>
     </View>
   );
 
@@ -71,18 +91,6 @@ export default function FinancesScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Finances</Text>
-
-      {/* Display Total Incomes and Expenses in Rupiah */}
-      <Text style={styles.totalIncomeText}>📉 {totalIncome.toLocaleString('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-      })}</Text>
-      <Text style={styles.totalExpenseText}>📈 {totalExpense.toLocaleString('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-      })}</Text>
-
       {/* Bar Chart for Income and Expenses */}
       <BarChart
         data={{
@@ -93,16 +101,16 @@ export default function FinancesScreen() {
             },
           ],
         }}
-        width={Dimensions.get('window').width - 200} // Chart width
-        height={120} // Chart height
-        fromZero={true} // Pastikan bar chart mulai dari 0
+        width={Dimensions.get('window').width - 40} // Chart width
+        height={180} // Chart height
+        fromZero={true} // Ensure chart starts from 0
         withHorizontalLabels={false}
-        withInnerLines={false}
+        // withInnerLines={false}
         chartConfig={{
           backgroundColor: '#1a1a1a',
           backgroundGradientFrom: '#1a1a1a',
           backgroundGradientTo: '#1a1a1a',
-          decimalPlaces: 0, // Tidak ada angka desimal
+          decimalPlaces: 0, // No decimal numbers
           color: (opacity = 0) => `rgba(255, 255, 255, ${opacity})`,
           labelColor: (opacity = 0) => `rgba(255, 255, 255, ${opacity})`,
           style: {
@@ -118,13 +126,22 @@ export default function FinancesScreen() {
           marginVertical: 10,
           borderRadius: 8,
         }}
-        // Sembunyikan label sumbu Y dan tampilkan nilai pada bar
+        // Hide Y-axis labels and show value on bars
         yAxisLabel="" 
         yAxisSuffix=""
-        showValuesOnTopOfBars={true} // Menampilkan nilai pada bar
       />
 
-
+      {/* Display Total Incomes and Expenses in Rupiah */}
+      <View style={styles.transactionRow}>
+        <Text style={styles.totalIncomeText}> {totalIncome.toLocaleString('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+        })}</Text>
+        <Text style={styles.totalExpenseText}> {totalExpense.toLocaleString('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+        })}</Text>
+      </View>
 
       <Text style={styles.subtitle}>Transaction History</Text>
       <FlatList
@@ -156,13 +173,13 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   totalIncomeText: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#28a745', // Green color for income
     marginBottom: 10,
   },
   totalExpenseText: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#dc3545', // Red color for expenses
     marginBottom: 20,
@@ -178,7 +195,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
   },
   transactionText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#ccc',
   },
   incomeText: {
@@ -186,5 +203,10 @@ const styles = StyleSheet.create({
   },
   expenseText: {
     color: '#dc3545', // Red color for expense
+  },
+  transactionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',  // Space between category and date
+    marginTop: 5,  // Optional: Add some space between the amount and the row
   },
 });
