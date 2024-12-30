@@ -1,9 +1,10 @@
-import { StyleSheet, TextInput, Keyboard, TouchableWithoutFeedback, useColorScheme, TouchableOpacity } from 'react-native';
+import { StyleSheet, TextInput, Keyboard, TouchableWithoutFeedback, useColorScheme, TouchableOpacity, Pressable } from 'react-native';
 import { Text, View, useThemeColor } from '@/components/Themed';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import RNPickerSelect from 'react-native-picker-select';
+import {Picker} from '@react-native-picker/picker';
 import React, { useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
+
 
 interface TabOneScreenProps {
   onExpanseAdded: () => void;
@@ -18,7 +19,7 @@ export default function TabOneScreen({ onExpanseAdded }: TabOneScreenProps) {
   // State for expense amount and category
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState(null);
-
+  const [isPickerVisible, setPickerVisible] = useState(false); // State to toggle Picker visibility
   const [resetKey, setResetKey] = useState(0);
 
   // Function to handle form submission
@@ -77,16 +78,16 @@ export default function TabOneScreen({ onExpanseAdded }: TabOneScreenProps) {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+    <Pressable style={{ flex: 1 }} onPress={() => Keyboard.dismiss()}>
       <SafeAreaView style={styles.container}>
         <Text style={styles.icon}>💸</Text>
-
+  
         {/* Label for Amount Input */}
         <Text style={styles.label}>Jumlah Pengeluaran</Text>
         <TextInput
           style={[
             styles.input,
-            colorScheme === 'dark' ? styles.inputDark : styles.inputLight
+            colorScheme === 'dark' ? styles.inputDark : styles.inputLight,
           ]}
           placeholder="Masukkan jumlah pengeluaran"
           placeholderTextColor={colorScheme === 'dark' ? '#888' : '#666'}
@@ -94,45 +95,65 @@ export default function TabOneScreen({ onExpanseAdded }: TabOneScreenProps) {
           value={amount}
           onChangeText={(text) => setAmount(text)} // Save the input amount
         />
-
+  
         {/* Label for Category Select */}
+        
         <Text style={styles.label}>Kategori Pengeluaran</Text>
-        <RNPickerSelect
-          key={category}  // This will trigger a re-render when category changes
-          style={{
-            inputIOS: [styles.inputIOS, colorScheme === 'dark' ? styles.inputDark : styles.inputLight],
-            inputAndroid: [styles.inputAndroid, colorScheme === 'dark' ? styles.inputDark : styles.inputLight],
-            placeholder: {
-              color: colorScheme === 'dark' ? '#888' : '#666',
-            },
-            iconContainer: styles.iconContainer,
-          }}
-          value={category}
-          onValueChange={(value) => setCategory(value)}
-          items={[
-            { label: 'Food & Beverages', value: 'food_beverages' },
-            { label: 'Transportation', value: 'transportation' },
-            { label: 'Housing & Utilities', value: 'housing_utilities' },
-            { label: 'Healthcare', value: 'healthcare' },
-            { label: 'Entertainment', value: 'entertainment' },
-            { label: 'Education', value: 'education' },
-            { label: 'Clothing & Personal Care', value: 'clothing_personal_care' },
-            { label: 'Insurance', value: 'insurance' },
-            { label: 'Savings & Investments', value: 'savings_investments' },
-            { label: 'Debt Payments', value: 'debt_payments' },
-            { label: 'Miscellaneous', value: 'miscellaneous' },
+
+        <TouchableOpacity
+          style={[
+            styles.input,
+            { justifyContent: 'center' },
+            colorScheme === 'dark' ? styles.inputDark : styles.inputLight,
           ]}
-          placeholder={{ label: 'Pilih kategori pengeluaran', value: null }}
-        />
+          onPress={() => setPickerVisible(!isPickerVisible)}
+        >
+          <Text style={{ color: category ? '#888' : '#888' }}>
+            {category
+              ? category
+              : 'Pilih kategori pengeluaran'}
+          </Text>
+        </TouchableOpacity>
 
+        {isPickerVisible && (
+        <View style={{ width: '100%' }}>
+          <Picker
+            style={styles.picker}
+            selectedValue={category}
+            onValueChange={(value) => {
+              setCategory(value);
+              setPickerVisible(false); // Close picker after selection
+            }}
+          >
+            <Picker.Item label="Pilih kategori pengeluaran" value={null} />
+            <Picker.Item label="Food & Beverages" value="food_beverages" />
+            <Picker.Item label="Transportation" value="transportation" />
+            <Picker.Item label="Housing & Utilities" value="housing_utilities" />
+            <Picker.Item label="Healthcare" value="healthcare" />
+            <Picker.Item label="Entertainment" value="entertainment" />
+            <Picker.Item label="Education" value="education" />
+            <Picker.Item label="Clothing & Personal Care" value="clothing_personal_care" />
+            <Picker.Item label="Insurance" value="insurance" />
+            <Picker.Item label="Savings & Investments" value="savings_investments" />
+            <Picker.Item label="Debt Payments" value="debt_payments" />
+            <Picker.Item label="Miscellaneous" value="miscellaneous" />
+          </Picker>
 
+      </View>
+      )}
+
+  
         {/* Custom Submit Button with Danger Theme */}
-        <TouchableOpacity style={[styles.button, { backgroundColor: dangerColor }]} onPress={handleSubmit}>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: dangerColor }]}
+          onPress={handleSubmit}
+        >
           <Text style={styles.buttonText}>Tambah Pengeluaran</Text>
         </TouchableOpacity>
       </SafeAreaView>
-    </TouchableWithoutFeedback>
+    </Pressable>
   );
+  
 }
 
 const styles = StyleSheet.create({
@@ -170,6 +191,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
     borderColor: '#555',
     color: '#fff',
+  },
+  picker:{
+    borderRadius: 10,
   },
   inputIOS: {
     height: 50,

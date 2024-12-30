@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, FlatList, View, useColorScheme } from 'react-native';
+import { StyleSheet, Text, FlatList, View, useColorScheme, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BarChart } from 'react-native-chart-kit';
 
 // Define the Expense and Income types
 interface Transaction {
@@ -14,10 +15,9 @@ export default function FinancesScreen() {
   const colorScheme = useColorScheme();
   const [history, setHistory] = useState<Transaction[]>([]);
 
-
   useEffect(() => {
     fetchTransactions();
-    
+
     // Set interval to update transactions every 5 seconds
     const intervalId = setInterval(fetchTransactions, 5000);
 
@@ -29,7 +29,7 @@ export default function FinancesScreen() {
     try {
       const storedExpenses = await AsyncStorage.getItem('expenses');
       const storedIncomes = await AsyncStorage.getItem('incomes');
-      
+
       const expenses = storedExpenses ? JSON.parse(storedExpenses).map((expense: Transaction) => ({ ...expense, type: 'expense' })) : [];
       const incomes = storedIncomes ? JSON.parse(storedIncomes).map((income: Transaction) => ({ ...income, type: 'income' })) : [];
 
@@ -43,8 +43,6 @@ export default function FinancesScreen() {
     }
   };
 
-
-
   // Calculate the total amount for a given type in IDR (Rupiah)
   const getTotalAmount = (type: 'income' | 'expense') => {
     const total = history
@@ -54,10 +52,7 @@ export default function FinancesScreen() {
         return sum + (isNaN(amount) ? 0 : amount);
       }, 0);
 
-    return total.toLocaleString('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-    });
+    return total;
   };
 
   // Render each transaction item with IDR format
@@ -71,13 +66,65 @@ export default function FinancesScreen() {
     </View>
   );
 
+  const totalIncome = getTotalAmount('income');
+  const totalExpense = getTotalAmount('expense');
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Finances</Text>
 
       {/* Display Total Incomes and Expenses in Rupiah */}
-      <Text style={styles.totalIncomeText}>📉 {getTotalAmount('income')}</Text>
-      <Text style={styles.totalExpenseText}>📈 {getTotalAmount('expense')}</Text>
+      <Text style={styles.totalIncomeText}>📉 {totalIncome.toLocaleString('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+      })}</Text>
+      <Text style={styles.totalExpenseText}>📈 {totalExpense.toLocaleString('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+      })}</Text>
+
+      {/* Bar Chart for Income and Expenses */}
+      <BarChart
+        data={{
+          labels: ['Income', 'Expense'],
+          datasets: [
+            {
+              data: [totalIncome, totalExpense],
+            },
+          ],
+        }}
+        width={Dimensions.get('window').width - 200} // Chart width
+        height={120} // Chart height
+        fromZero={true} // Pastikan bar chart mulai dari 0
+        withHorizontalLabels={false}
+        withInnerLines={false}
+        chartConfig={{
+          backgroundColor: '#1a1a1a',
+          backgroundGradientFrom: '#1a1a1a',
+          backgroundGradientTo: '#1a1a1a',
+          decimalPlaces: 0, // Tidak ada angka desimal
+          color: (opacity = 0) => `rgba(255, 255, 255, ${opacity})`,
+          labelColor: (opacity = 0) => `rgba(255, 255, 255, ${opacity})`,
+          style: {
+            borderRadius: 0,
+          },
+          propsForDots: {
+            r: '6',
+            strokeWidth: '2',
+            stroke: '#ffa726',
+          },
+        }}
+        style={{
+          marginVertical: 10,
+          borderRadius: 8,
+        }}
+        // Sembunyikan label sumbu Y dan tampilkan nilai pada bar
+        yAxisLabel="" 
+        yAxisSuffix=""
+        showValuesOnTopOfBars={true} // Menampilkan nilai pada bar
+      />
+
+
 
       <Text style={styles.subtitle}>Transaction History</Text>
       <FlatList
@@ -88,7 +135,6 @@ export default function FinancesScreen() {
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {

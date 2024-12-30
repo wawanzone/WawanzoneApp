@@ -1,7 +1,7 @@
-import { StyleSheet, TextInput, Keyboard, TouchableWithoutFeedback, useColorScheme, TouchableOpacity } from 'react-native';
+import { StyleSheet, TextInput, Keyboard, TouchableWithoutFeedback, useColorScheme, TouchableOpacity, Pressable } from 'react-native';
 import { Text, View, useThemeColor } from '@/components/Themed';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import RNPickerSelect from 'react-native-picker-select';
+import {Picker} from '@react-native-picker/picker';
 import React, { useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -12,7 +12,7 @@ interface TabTwoScreenProps {
 export default function TabTwoScreen({ onIncomeAdded }: TabTwoScreenProps) {
   const colorScheme = useColorScheme();
   const successColor = useThemeColor({}, 'success');
-
+  const [isPickerVisible, setPickerVisible] = useState(false); // State to toggle Picker visibility
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<string | null>(null);
 
@@ -51,7 +51,7 @@ export default function TabTwoScreen({ onIncomeAdded }: TabTwoScreenProps) {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+    <Pressable style={{ flex: 1 }} onPress={() => Keyboard.dismiss()}>
       <SafeAreaView style={styles.container}>
         <Text style={styles.icon}>🤑</Text>
         
@@ -69,28 +69,46 @@ export default function TabTwoScreen({ onIncomeAdded }: TabTwoScreenProps) {
         />
 
         <Text style={styles.label}>Kategori Pemasukan</Text>
-        <RNPickerSelect
-          style={{
-            inputIOS: [styles.inputIOS, colorScheme === 'dark' ? styles.inputDark : styles.inputLight],
-            inputAndroid: [styles.inputAndroid, colorScheme === 'dark' ? styles.inputDark : styles.inputLight],
-            placeholder: {
-              color: colorScheme === 'dark' ? '#888' : '#666'
-            },
-            iconContainer: styles.iconContainer,
-          }}
-          onValueChange={(value) => setCategory(value)}
-          items={[
-            { label: 'Salary', value: 'salary' },
-            { label: 'Other', value: 'other' },
+        <TouchableOpacity
+           style={[
+            styles.input,
+            { justifyContent: 'center' },
+            colorScheme === 'dark' ? styles.inputDark : styles.inputLight,
           ]}
-          placeholder={{ label: 'Pilih kategori pemasukan', value: null }}
-        />
+          onPress={() => setPickerVisible(!isPickerVisible)}
+        >
+          <Text style={{ color: category ? '#888' : '#888' }}>
+            {category
+              ? category
+              : 'Pilih kategori pemasukan'}
+          </Text>
+        </TouchableOpacity>
+
+        {isPickerVisible && (
+        <View style={{ width: '100%' }}>
+          <Picker
+            style={styles.picker}
+            selectedValue={category}
+            onValueChange={(value) => {
+              setCategory(value);
+              setPickerVisible(false); // Close picker after selection
+            }}
+          >
+            <Picker.Item label="Pilih kategori pengeluaran" value={null} />
+            <Picker.Item label="Salary" value="salary" />
+            <Picker.Item label="Freelance" value="freelance" />
+            <Picker.Item label="Other" value="other" />
+          </Picker>
+
+      </View>
+      )}
+       
 
         <TouchableOpacity style={[styles.button, { backgroundColor: successColor }]} onPress={handleIncomeSubmit}>
           <Text style={styles.buttonText}>Tambah Pemasukan</Text>
         </TouchableOpacity>
       </SafeAreaView>
-    </TouchableWithoutFeedback>
+     </Pressable>
   );
 }
 
@@ -129,6 +147,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
     borderColor: '#555',
     color: '#fff',
+  },
+  picker:{
+    borderRadius: 10,
   },
   inputIOS: {
     height: 50,
