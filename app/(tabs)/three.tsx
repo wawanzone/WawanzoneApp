@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, FlatList, View, useColorScheme, Dimensions } from 'react-native';
+import { StyleSheet, Text, FlatList, View, useColorScheme, Dimensions, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BarChart } from 'react-native-chart-kit';
+import CollapsibleView from '@/components/CollapsibleView';
 
 // Define the Expense and Income types
 interface Transaction {
@@ -14,6 +15,8 @@ interface Transaction {
 export default function FinancesScreen() {
   const colorScheme = useColorScheme();
   const [history, setHistory] = useState<Transaction[]>([]);
+  const [groupedTransactions, setGroupedTransactions] = useState<{ [key: string]: Transaction[] }>({});
+  const [isGroupedByCategory, setIsGroupedByCategory] = useState(false);
 
   useEffect(() => {
     fetchTransactions();
@@ -38,9 +41,22 @@ export default function FinancesScreen() {
       combinedHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setHistory(combinedHistory);
+      groupByCategory(combinedHistory);
     } catch (error) {
       console.error('Failed to load transactions:', error);
     }
+  };
+
+  const groupByCategory = (transactions: Transaction[]) => {
+    const grouped = transactions.reduce((acc: { [key: string]: Transaction[] }, transaction) => {
+      const { category } = transaction;
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(transaction);
+      return acc;
+    }, {});
+    setGroupedTransactions(grouped);
   };
 
   // Calculate the total amount for a given type in IDR (Rupiah)
@@ -53,6 +69,15 @@ export default function FinancesScreen() {
       }, 0);
 
     return total;
+  };
+
+  const getTotalByCategory = (category: string) => {
+    const total = groupedTransactions[category]?.reduce((sum, transaction) => {
+      const amount = parseFloat(transaction.amount);
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0) || 0;
+
+    return total.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' });
   };
 
   // Format the date as "Today", "1 day ago", "2 days ago", etc.
@@ -86,11 +111,31 @@ export default function FinancesScreen() {
     </View>
   );
 
+  const renderGroupedItems = () => {
+    return Object.keys(groupedTransactions).map(category => (
+      <View key={category} style={styles.groupedCategory}>
+        <Text style={styles.groupedCategoryText}>{category} - Total: {getTotalByCategory(category)}</Text>
+        {groupedTransactions[category].map((item, index) => (
+          <View key={`${category}-${index}`} style={styles.transactionItem}>
+            <Text style={[styles.transactionText, item.type === 'income' ? styles.incomeText : styles.expenseText]}>
+              {parseFloat(item.amount).toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+            </Text>
+            <View style={styles.transactionRow}>
+              <Text style={styles.transactionText}>{formatDate(item.date)}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    ));
+  };
+
   const totalIncome = getTotalAmount('income');
   const totalExpense = getTotalAmount('expense');
 
   return (
+    
     <View style={styles.container}>
+      
       {/* Bar Chart for Income and Expenses */}
       <BarChart
         data={{
@@ -105,7 +150,6 @@ export default function FinancesScreen() {
         height={180} // Chart height
         fromZero={true} // Ensure chart starts from 0
         withHorizontalLabels={false}
-        // withInnerLines={false}
         chartConfig={{
           backgroundColor: '#1a1a1a',
           backgroundGradientFrom: '#1a1a1a',
@@ -118,7 +162,7 @@ export default function FinancesScreen() {
           },
           propsForDots: {
             r: '6',
-            strokeWidth: '2',
+            strokeWidth: '1',
             stroke: '#ffa726',
           },
         }}
@@ -143,12 +187,58 @@ export default function FinancesScreen() {
         })}</Text>
       </View>
 
-      <Text style={styles.subtitle}>Transaction History</Text>
-      <FlatList
-        data={history}
-        renderItem={renderItem}
-        keyExtractor={(item, index) => `transaction-${index}`}
-      />
+      <View style={styles.toggleContainer}>
+        <TouchableOpacity
+          style={[styles.toggleButton, !isGroupedByCategory && styles.activeButton]}
+          onPress={() => setIsGroupedByCategory(false)}
+        >
+          <Text style={styles.toggleButtonText}>History</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleButton, isGroupedByCategory && styles.activeButton]}
+          onPress={() => setIsGroupedByCategory(true)}
+        >
+          <Text style={styles.toggleButtonText}>Category</Text>
+        </TouchableOpacity>
+      </View>
+
+      
+
+      {isGroupedByCategory ? (
+        <FlatList
+          data={Object.keys(groupedTransactions)}
+          renderItem={({ item }) => (
+            <View>
+                <CollapsibleView 
+                  header={
+                    <View style={styles.catContainer}>
+                      <Text style={styles.groupedCategoryText}>{item}</Text>
+                      <Text style={styles.groupedCategoryText}>{getTotalByCategory(item)}</Text>
+                    </View>
+                  }
+                >
+                {groupedTransactions[item].map((transaction, index) => (
+                  <View key={index} style={styles.transactionItem}>
+                    <Text style={[styles.transactionText, transaction.type === 'income' ? styles.incomeText : styles.expenseText]}>
+                      {parseFloat(transaction.amount).toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+                    </Text>
+                    <View style={styles.transactionRow}>
+                      <Text style={styles.transactionText}>{formatDate(transaction.date)}</Text>
+                    </View>
+                  </View>
+                ))}
+              </CollapsibleView>
+            </View>
+          )}
+          keyExtractor={(item, index) => `category-${index}`}
+        />
+      ) : (
+        <FlatList
+          data={history}
+          renderItem={renderItem}
+          keyExtractor={(item, index) => `transaction-${index}`}
+        />
+      )}
     </View>
   );
 }
@@ -208,5 +298,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',  // Space between category and date
     marginTop: 5,  // Optional: Add some space between the amount and the row
+  },
+  groupedCategory: {
+    marginBottom: 15,
+  },
+  groupedCategoryText: {
+    fontSize: 14,
+    color: '#fff',
+    marginBottom: 10,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    gap: 10,
+  },
+  catContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 18,
+    gap: 10,
+  },
+  toggleButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: '#444',
+    alignItems: 'center',
+  },
+  activeButton: {
+    backgroundColor: '#28a745',
+  },
+  toggleButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  content: {
   },
 });
